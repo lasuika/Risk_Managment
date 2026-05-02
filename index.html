@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>加密貨幣風險計算器</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0d1117;
+      --bg2:    #161b22;
+      --bg3:    #21262d;
+      --border: #30363d;
+      --text:   #e6edf3;
+      --text2:  #8b949e;
+      --green:  #3fb950;
+      --red:    #f85149;
+      --yellow: #d29922;
+      --blue:   #58a6ff;
+      --accent: #1f6feb;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Consolas', 'Monaco', 'PingFang TC', 'Microsoft JhengHei', monospace;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .header h1 span { color: var(--green); }
+
+/* ── Layout ─────────────────────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      min-height: calc(100vh - 53px);
+    }
+    .panel { background: var(--bg); padding: 24px; }
+
+    /* ── Section title ──────────────────────────────────────── */
+    .section-title {
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--text2);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Custom select ──────────────────────────────────────── */
+    .asset-selector { margin-bottom: 20px; }
+    .custom-select { position: relative; }
+    .select-search {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+    }
+    .select-search:focus { border-color: var(--accent); }
+    .select-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 200;
+      display: none;
+    }
+    .select-dropdown.open { display: block; }
+    .select-option {
+      padding: 9px 12px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .select-option:hover { background: var(--bg3); }
+    .select-option .opt-sub {
+      font-size: 11px;
+      color: var(--text2);
+    }
+
+    /* ── Price display ──────────────────────────────────────── */
+    .price-display {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .price-label {
+      font-size: 11px;
+      color: var(--text2);
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .price-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: blink 1s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    .price-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--yellow);
+      letter-spacing: 1px;
+      transition: color 0.25s;
+    }
+    .price-value.up   { color: var(--green); }
+    .price-value.down { color: var(--red);   }
+    .price-meta { font-size: 11px; color: var(--text2); text-align: right; margin-top: 4px; }
+
+    /* ── Inputs ─────────────────────────────────────────────── */
+    .input-group { margin-bottom: 14px; }
+    .input-group label {
+      display: block;
+      font-size: 11px;
+      color: var(--text2);
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .input-wrap { position: relative; display: flex; align-items: center; }
+    .input-wrap input {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 10px 52px 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-wrap input:focus { border-color: var(--accent); }
+    .input-wrap .unit {
+      position: absolute; right: 12px;
+      color: var(--text2); font-size: 11px;
+      pointer-events: none;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number] { -moz-appearance: textfield; }
+
+    /* ── Order / SL / TP tabs ───────────────────────────────── */
+    .order-tabs, .sl-tabs, .tp-tabs, .margin-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+    .order-tab, .sl-tab, .tp-tab, .margin-tab {
+      padding: 5px 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text2);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .order-tab.active, .sl-tab.active, .tp-tab.active, .margin-tab.active { border-color: var(--accent); color: var(--blue); background: var(--bg3); }
+
+    /* ── Result divider ─────────────────────────────────────── */
+    .result-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* ── Direction toggle ───────────────────────────────────── */
+    .dir-toggle { display: flex; width: 100%; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 14px; }
+    .dir-btn {
+      flex: 1; padding: 9px 0; background: var(--bg2);
+      border: none; cursor: pointer; font-family: inherit;
+      font-size: 13px; font-weight: 600; color: var(--text2);
+      letter-spacing: 0.5px; transition: all 0.15s;
+    }
+    .dir-btn[data-dir="long"].active  { background: var(--green); color: #000; }
+    .dir-btn[data-dir="short"].active { background: var(--red);   color: #fff; }
+
+    /* ── Results ────────────────────────────────────────────── */
+    .results-grid {
+      display: flex; flex-direction: column;
+      gap: 1px; background: var(--border);
+      border-radius: 8px; overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .result-row {
+      background: var(--bg2);
+      padding: 13px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .result-label {
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .result-value {
+      font-size: 16px; font-weight: 700;
+      color: var(--green);
+      font-variant-numeric: tabular-nums;
+    }
+    .result-value.highlight { color: var(--yellow); font-size: 20px; }
+    .result-value.neutral   { color: var(--text); }
+    .result-value.warning   { color: var(--red); }
+
+    /* ── Alert ──────────────────────────────────────────────── */
+    .alert {
+      background: rgba(248,81,73,.1);
+      border: 1px solid var(--red);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12px; color: var(--red);
+      margin-bottom: 14px; display: none;
+      line-height: 1.6;
+    }
+    .alert.visible { display: block; }
+
+    /* ── Formula box ────────────────────────────────────────── */
+    .formula-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 12px; color: var(--text2);
+      line-height: 1.8;
+    }
+    .formula-box .ftitle {
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 680px) {
+      .main { grid-template-columns: 1fr; }
+      .header { flex-direction: column; gap: 10px; }
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>加密貨幣 <span>永續合約</span> 風險計算器</h1>
+</div>
+
+<div class="main">
+
+  <!-- ── 左側：輸入 ──────────────────────────────────────────── -->
+  <div class="panel">
+
+    <div class="section-title">選擇交易商品</div>
+
+    <div class="asset-selector">
+      <div class="custom-select">
+        <input type="text" class="select-search" id="assetSearch"
+               placeholder="搜尋商品（如 BTCUSDT）…" autocomplete="off" spellcheck="false">
+        <div class="select-dropdown" id="assetDropdown"></div>
+      </div>
+    </div>
+
+    <div class="price-display">
+      <div>
+        <div class="price-label"><span class="price-dot"></span>即時價格</div>
+        <div id="selectedAsset" style="font-size:12px;color:var(--text2);margin-top:3px;font-weight:600">—</div>
+      </div>
+      <div>
+        <div class="price-value" id="priceValue">載入中…</div>
+        <div class="price-meta" id="priceTime">—</div>
+      </div>
+    </div>
+
+    <div class="section-title">交易參數</div>
+
+    <div class="dir-toggle">
+      <button class="dir-btn active" data-dir="long">▲ 做多 LONG</button>
+      <button class="dir-btn" data-dir="short">▼ 做空 SHORT</button>
+    </div>
+
+    <div class="input-group">
+      <label>入場方式</label>
+      <div class="order-tabs">
+        <button class="order-tab active" data-mode="market">市價單</button>
+        <button class="order-tab" data-mode="limit">限價單</button>
+      </div>
+      <div id="limitPriceGroup" style="display:none">
+        <div class="input-wrap">
+          <input type="number" id="limitPrice" placeholder="輸入限價入場價格…" min="0" step="any">
+          <span class="unit">USDT</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>本金</label>
+      <div class="input-wrap">
+        <input type="number" id="capital" placeholder="10000" min="0" step="100">
+        <span class="unit">USDT</span>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>單筆風險比例</label>
+      <div class="input-wrap">
+        <input type="number" id="riskPct" placeholder="1" min="0.01" max="100" step="0.1">
+        <span class="unit">%</span>
+      </div>
+    </div>
+
+    <div class="input-group" id="leverageGroup">
+      <label>槓桿倍數</label>
+      <div class="input-wrap">
+        <input type="number" id="leverage" placeholder="10" min="1" max="125" step="1" value="10">
+        <span class="unit">×</span>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>保證金模式</label>
+      <div class="margin-tabs">
+        <button class="margin-tab active" data-mode="isolated">逐倉</button>
+        <button class="margin-tab" data-mode="cross">全倉</button>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>維持保證金率（選填）</label>
+      <div class="input-wrap">
+        <input type="number" id="mmrRate" placeholder="預設 0.5" min="0" step="0.01">
+        <span class="unit">%</span>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>止損設定</label>
+      <div class="sl-tabs">
+        <button class="sl-tab active" data-mode="price">輸入價格</button>
+        <button class="sl-tab" data-mode="pct">輸入百分比</button>
+      </div>
+      <div id="slPriceGroup">
+        <div class="input-wrap">
+          <input type="number" id="slPrice" placeholder="輸入止損價格…" min="0" step="any">
+          <span class="unit">USDT</span>
+        </div>
+      </div>
+      <div id="slPctGroup" style="display:none">
+        <div class="input-wrap">
+          <input type="number" id="slPct" placeholder="如：2" min="0.01" max="99" step="0.1">
+          <span class="unit">%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>止盈設定</label>
+      <div class="tp-tabs">
+        <button class="tp-tab active" data-mode="price">輸入價格</button>
+        <button class="tp-tab" data-mode="pct">輸入百分比</button>
+      </div>
+      <div id="tpPriceGroup">
+        <div class="input-wrap">
+          <input type="number" id="tpPrice" placeholder="輸入止盈價格…" min="0" step="any">
+          <span class="unit">USDT</span>
+        </div>
+      </div>
+      <div id="tpPctGroup" style="display:none">
+        <div class="input-wrap">
+          <input type="number" id="tpPct" placeholder="如：5" min="0.01" max="9999" step="0.1">
+          <span class="unit">%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>手續費率（選填）</label>
+      <div class="input-wrap">
+        <input type="number" id="feeRate" placeholder="如：0.05" min="0" step="0.001">
+        <span class="unit">%</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 右側：結果 ──────────────────────────────────────────── -->
+  <div class="panel">
+
+    <div class="section-title">風險分析結果</div>
+
+    <div class="alert" id="alertBox"></div>
+
+    <div class="results-grid">
+      <div class="result-row">
+        <span class="result-label">進場價格</span>
+        <span class="result-value highlight" id="resEntryPrice">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">止損價格</span>
+        <span class="result-value neutral" id="resSlPrice">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">止損距離</span>
+        <span class="result-value neutral" id="resSlDist">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">風險金額</span>
+        <span class="result-value" id="resRiskAmount">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">顆數</span>
+        <span class="result-value" id="resCoins">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">倉位總值</span>
+        <span class="result-value" id="resPositionValue">—</span>
+      </div>
+      <div class="result-row" id="rowMargin">
+        <span class="result-label">所需保證金</span>
+        <span class="result-value" id="resMargin">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">強平估價 ≈</span>
+        <span class="result-value warning" id="resLiqPrice">—</span>
+      </div>
+      <div class="result-divider"></div>
+      <div class="result-row">
+        <span class="result-label">止盈價格</span>
+        <span class="result-value neutral" id="resTpPrice">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">止盈距離</span>
+        <span class="result-value neutral" id="resTpDist">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">風險報酬比</span>
+        <span class="result-value neutral" id="resRR">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">毛利</span>
+        <span class="result-value" id="resGrossProfit">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">總手續費</span>
+        <span class="result-value neutral" id="resTotalFee">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">淨收益</span>
+        <span class="result-value" id="resNetProfit">—</span>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <div class="ftitle">計算公式</div>
+      風險金額 = 本金 × 風險比例<br>
+      顆數 = 風險金額 ÷ （進場價 − 止損價）<br>
+      倉位總值 = 顆數 × 進場價<br>
+      保證金 = 倉位總值 ÷ 槓桿<br>
+      毛利 = 顆數 × （止盈價 − 進場價）<br>
+      手續費 = （開倉 + 平倉）× 費率<br>
+      淨收益 = 毛利 − 手續費<br>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const OKX = 'https://www.okx.com/api/v5';
+
+const state = {
+  selectedInst: null,
+  currentPrice: null,
+  prevPrice: null,
+  direction: 'long',
+  orderType: 'market',
+  slMode: 'price',
+  tpMode: 'price',
+  marginMode: 'isolated',
+  instruments: [],
+  pollingTimer: null,
+};
+
+// ── DOM helpers ────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+const elPrice         = $('priceValue');
+const elPriceTime     = $('priceTime');
+const elSelectedAsset = $('selectedAsset');
+const elAlert         = $('alertBox');
+const elAssetSearch   = $('assetSearch');
+const elAssetDropdown = $('assetDropdown');
+
+// ── Symbol display format ──────────────────────────────────────
+// BTC-USDT       → BTCUSDT
+// BTC-USDT-SWAP  → BTCUSDT.P
+function toDisplay(instId) {
+  if (instId.endsWith('-SWAP')) {
+    return instId.slice(0, -5).replace(/-/g, '') + '.P';
+  }
+  return instId.replace(/-/g, '');
+}
+
+// Match query against display name (ignore dots for partial match)
+function instMatchesQuery(inst, q) {
+  const display = toDisplay(inst.instId);
+  const qNorm   = q.replace(/\./g, '').toUpperCase();
+  const dNorm   = display.replace(/\./g, '').toUpperCase();
+  return dNorm.includes(qNorm);
+}
+
+// ── Number formatting ──────────────────────────────────────────
+function fmt(n, d = 2) {
+  if (n == null || isNaN(n)) return '—';
+  return n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+function fmtPrice(p) {
+  if (p >= 1000) return fmt(p, 2);
+  if (p >= 1)    return fmt(p, 4);
+  return fmt(p, 6);
+}
+
+function coinDecimals(price) {
+  if (price >= 10000) return 6;
+  if (price >= 100)   return 4;
+  if (price >= 1)     return 2;
+  return 0;
+}
+
+// ── Entry price ────────────────────────────────────────────────
+function getEntryPrice() {
+  if (state.orderType === 'limit') {
+    const p = parseFloat($('limitPrice').value);
+    return isNaN(p) || p <= 0 ? null : p;
+  }
+  return state.currentPrice;
+}
+
+// ── OKX API ────────────────────────────────────────────────────
+async function loadInstruments() {
+  try {
+    const r = await fetch(`${OKX}/public/instruments?instType=SWAP`);
+    const d = await r.json();
+    if (d.code !== '0') throw new Error(d.msg);
+    state.instruments = d.data.sort((a, b) => a.instId.localeCompare(b.instId));
+  } catch (e) {
+    console.error('商品載入失敗:', e);
+  }
+}
+
+async function fetchPrice(instId) {
+  try {
+    const r = await fetch(`${OKX}/market/ticker?instId=${instId}`);
+    const d = await r.json();
+    if (d.code !== '0' || !d.data?.[0]) return;
+    state.prevPrice    = state.currentPrice;
+    state.currentPrice = parseFloat(d.data[0].last);
+    updatePriceDisplay();
+    calculate();
+  } catch {
+    elPrice.textContent = '錯誤';
+  }
+}
+
+function startPolling(instId) {
+  stopPolling();
+  fetchPrice(instId);
+  state.pollingTimer = setInterval(() => fetchPrice(instId), 1000);
+}
+
+function stopPolling() {
+  if (state.pollingTimer) { clearInterval(state.pollingTimer); state.pollingTimer = null; }
+}
+
+// ── Price display ──────────────────────────────────────────────
+function updatePriceDisplay() {
+  const p = state.currentPrice;
+  elPrice.textContent = p != null ? '$' + fmtPrice(p) : '載入中…';
+
+  elPrice.className = 'price-value';
+  if (state.prevPrice != null && p !== state.prevPrice) {
+    elPrice.classList.add(p > state.prevPrice ? 'up' : 'down');
+    setTimeout(() => { elPrice.className = 'price-value'; }, 350);
+  }
+
+  const t = new Date();
+  elPriceTime.textContent = t.toLocaleTimeString('zh-TW', { hour12: false });
+}
+
+// ── Asset dropdown ─────────────────────────────────────────────
+function renderDropdown(query) {
+  const list = state.instruments;
+  const q    = (query || '').trim();
+  const filtered = q
+    ? list.filter(i => instMatchesQuery(i, q)).slice(0, 60)
+    : list.slice(0, 80);
+
+  elAssetDropdown.innerHTML = '';
+  if (!filtered.length) {
+    elAssetDropdown.innerHTML = '<div class="select-option" style="color:var(--text2)">無符合商品</div>';
+    return;
+  }
+  filtered.forEach(inst => {
+    const div  = document.createElement('div');
+    div.className = 'select-option';
+
+    const main = document.createElement('span');
+    main.textContent = toDisplay(inst.instId);
+
+    const sub  = document.createElement('span');
+    sub.className = 'opt-sub';
+    sub.textContent = inst.instId;
+
+    div.appendChild(main);
+    div.appendChild(sub);
+    div.addEventListener('mousedown', e => { e.preventDefault(); selectInstrument(inst); });
+    elAssetDropdown.appendChild(div);
+  });
+}
+
+function selectInstrument(inst) {
+  state.selectedInst  = inst;
+  const display       = toDisplay(inst.instId);
+  elAssetSearch.value  = display;
+  elSelectedAsset.textContent = display;
+  elAssetDropdown.classList.remove('open');
+  state.currentPrice   = null;
+  state.prevPrice      = null;
+  elPrice.textContent  = '載入中…';
+  elPrice.className    = 'price-value';
+  clearResults();
+  startPolling(inst.instId);
+}
+
+elAssetSearch.addEventListener('focus', () => {
+  renderDropdown(elAssetSearch.value);
+  elAssetDropdown.classList.add('open');
+});
+elAssetSearch.addEventListener('input', () => {
+  renderDropdown(elAssetSearch.value);
+  elAssetDropdown.classList.add('open');
+});
+elAssetSearch.addEventListener('blur', () => {
+  setTimeout(() => elAssetDropdown.classList.remove('open'), 200);
+});
+elAssetSearch.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { elAssetDropdown.classList.remove('open'); elAssetSearch.blur(); }
+});
+
+// ── Direction toggle ───────────────────────────────────────────
+document.querySelectorAll('.dir-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.direction = btn.dataset.dir;
+    document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Clear SL/TP fields to avoid stale values from the other direction
+    $('slPrice').value = ''; $('slPct').value = '';
+    $('tpPrice').value = ''; $('tpPct').value = '';
+    calculate();
+  });
+});
+
+// ── Order type tabs ────────────────────────────────────────────
+document.querySelectorAll('.order-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const mode = tab.dataset.mode;
+    state.orderType = mode;
+    document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    $('limitPriceGroup').style.display = mode === 'limit' ? '' : 'none';
+    calculate();
+  });
+});
+
+$('limitPrice').addEventListener('input', () => { syncPctFromPrice(); calculate(); });
+
+// ── SL mode tabs ───────────────────────────────────────────────
+document.querySelectorAll('.sl-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const mode = tab.dataset.mode;
+    state.slMode = mode;
+    document.querySelectorAll('.sl-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    if (mode === 'price') {
+      $('slPriceGroup').style.display = '';
+      $('slPctGroup').style.display   = 'none';
+      syncPriceFromPct();
+    } else {
+      $('slPriceGroup').style.display = 'none';
+      $('slPctGroup').style.display   = '';
+      syncPctFromPrice();
+    }
+    calculate();
+  });
+});
+
+function syncPriceFromPct() {
+  const pct  = parseFloat($('slPct').value);
+  const p    = getEntryPrice();
+  const long = state.direction === 'long';
+  if (!isNaN(pct) && p)
+    $('slPrice').value = (long ? p * (1 - pct / 100) : p * (1 + pct / 100)).toFixed(8).replace(/\.?0+$/, '');
+}
+
+function syncPctFromPrice() {
+  const slp  = parseFloat($('slPrice').value);
+  const p    = getEntryPrice();
+  const long = state.direction === 'long';
+  if (!isNaN(slp) && p) {
+    const dist = long ? p - slp : slp - p;
+    if (dist > 0) $('slPct').value = (dist / p * 100).toFixed(4).replace(/\.?0+$/, '');
+  }
+}
+
+$('slPrice').addEventListener('input', () => { if (state.slMode === 'price') syncPctFromPrice(); calculate(); });
+$('slPct').addEventListener('input',   () => { if (state.slMode === 'pct')   syncPriceFromPct(); calculate(); });
+
+// ── TP sync ────────────────────────────────────────────────────
+function syncTpPriceFromPct() {
+  const pct  = parseFloat($('tpPct').value);
+  const p    = getEntryPrice();
+  const long = state.direction === 'long';
+  if (!isNaN(pct) && p)
+    $('tpPrice').value = (long ? p * (1 + pct / 100) : p * (1 - pct / 100)).toFixed(8).replace(/\.?0+$/, '');
+}
+
+function syncTpPctFromPrice() {
+  const tp   = parseFloat($('tpPrice').value);
+  const p    = getEntryPrice();
+  const long = state.direction === 'long';
+  if (!isNaN(tp) && p) {
+    const dist = long ? tp - p : p - tp;
+    if (dist > 0) $('tpPct').value = (dist / p * 100).toFixed(4).replace(/\.?0+$/, '');
+  }
+}
+
+// ── TP tabs ────────────────────────────────────────────────────
+document.querySelectorAll('.tp-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const mode = tab.dataset.mode;
+    state.tpMode = mode;
+    document.querySelectorAll('.tp-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    if (mode === 'price') {
+      $('tpPriceGroup').style.display = '';
+      $('tpPctGroup').style.display   = 'none';
+      syncTpPctFromPrice();
+    } else {
+      $('tpPriceGroup').style.display = 'none';
+      $('tpPctGroup').style.display   = '';
+      syncTpPriceFromPct();
+    }
+    calculate();
+  });
+});
+
+$('tpPrice').addEventListener('input', () => { if (state.tpMode === 'price') syncTpPctFromPrice(); calculate(); });
+$('tpPct').addEventListener('input',   () => { if (state.tpMode === 'pct')   syncTpPriceFromPct(); calculate(); });
+$('feeRate').addEventListener('input', calculate);
+$('mmrRate').addEventListener('input', calculate);
+
+document.querySelectorAll('.margin-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.margin-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.marginMode = btn.dataset.mode;
+    calculate();
+  });
+});
+
+['capital','riskPct','leverage'].forEach(id => $(id).addEventListener('input', calculate));
+
+// ── Calculate ──────────────────────────────────────────────────
+function setResult(id, text, cls = '') {
+  const el = $(id);
+  el.textContent = text;
+  el.className   = 'result-value' + (cls ? ' ' + cls : '');
+}
+
+function clearTpResults() {
+  setResult('resTpPrice',     '—', 'neutral');
+  setResult('resTpDist',      '—', 'neutral');
+  setResult('resRR',          '—', 'neutral');
+  setResult('resGrossProfit', '—');
+  setResult('resTotalFee',    '—', 'neutral');
+  setResult('resNetProfit',   '—');
+}
+
+function clearResults() {
+  setResult('resEntryPrice',   '—', 'highlight');
+  setResult('resSlPrice',      '—', 'neutral');
+  setResult('resSlDist',       '—', 'neutral');
+  setResult('resRiskAmount',   '—');
+  setResult('resCoins',        '—');
+  setResult('resPositionValue','—');
+  setResult('resMargin',       '—');
+  setResult('resLiqPrice',     '—', 'warning');
+  clearTpResults();
+  hideAlert();
+}
+
+function showAlert(msg) { elAlert.textContent = msg; elAlert.classList.add('visible'); }
+function hideAlert()    { elAlert.classList.remove('visible'); }
+
+function calculate() {
+  const entry    = getEntryPrice();
+  const capital  = parseFloat($('capital').value);
+  const riskPct  = parseFloat($('riskPct').value);
+  const leverage = Math.max(1, parseFloat($('leverage').value) || 1);
+
+  setResult('resEntryPrice', entry != null ? '$' + fmtPrice(entry) : '—', 'highlight');
+  hideAlert();
+
+  if (!entry || isNaN(capital) || capital <= 0 || isNaN(riskPct) || riskPct <= 0) {
+    clearPartial();
+    return;
+  }
+
+  const long = state.direction === 'long';
+
+  let slPrice;
+  if (state.slMode === 'price') {
+    slPrice = parseFloat($('slPrice').value);
+  } else {
+    const pct = parseFloat($('slPct').value);
+    slPrice = isNaN(pct) ? NaN : long ? entry * (1 - pct / 100) : entry * (1 + pct / 100);
+  }
+
+  if (isNaN(slPrice)) { clearPartial(); return; }
+
+  const slInvalid = long ? slPrice >= entry : slPrice <= entry;
+  if (slInvalid) {
+    showAlert(long ? '⚠ 做多：止損價必須低於進場價格。' : '⚠ 做空：止損價必須高於進場價格。');
+    clearPartial();
+    setResult('resSlPrice', '$' + fmtPrice(slPrice), 'neutral');
+    return;
+  }
+  if (slPrice <= 0) {
+    showAlert('⚠ 止損價格必須大於 0。');
+    clearPartial();
+    return;
+  }
+
+  const slDist     = long ? entry - slPrice : slPrice - entry;
+  const slDistPct  = slDist / entry * 100;
+  const riskAmount = capital * (riskPct / 100);
+  const coins      = riskAmount / slDist;
+  const posValue   = coins * entry;
+  const margin     = posValue / leverage;
+
+  setResult('resSlPrice',    '$' + fmtPrice(slPrice), 'neutral');
+  setResult('resSlDist',     '$' + fmtPrice(slDist) + '（' + fmt(slDistPct, 2) + '%）', 'neutral');
+  setResult('resRiskAmount', '$' + fmt(riskAmount, 2));
+  setResult('resCoins',      fmt(coins, coinDecimals(entry)));
+  setResult('resPositionValue', '$' + fmt(posValue, 2));
+  setResult('resMargin', '$' + fmt(margin, 2), margin > capital ? 'warning' : '');
+  if (margin > capital)
+    showAlert(`⚠ 所需保證金（$${fmt(margin,2)}）超過本金（$${fmt(capital,2)}）。請減少倉位或提高槓桿。`);
+
+  // 強平估價（精確公式，支援逐倉 / 全倉）
+  const mmr = (parseFloat($('mmrRate').value) || 0.5) / 100;
+  const mmrLabel  = ((mmr * 100).toFixed(2)).replace(/\.?0+$/, '') + '%';
+  const modeLabel = state.marginMode === 'isolated' ? '逐倉' : '全倉';
+  let liqPrice;
+  if (state.marginMode === 'isolated') {
+    liqPrice = long
+      ? entry * (1 - 1 / leverage) / (1 - mmr)
+      : entry * (1 + 1 / leverage) / (1 + mmr);
+  } else {
+    liqPrice = long
+      ? (posValue - capital) / (coins * (1 - mmr))
+      : (posValue + capital) / (coins * (1 + mmr));
+  }
+  const liqDist    = Math.abs(entry - liqPrice);
+  const liqDistPct = liqDist / entry * 100;
+  if (liqPrice <= 0) {
+    setResult('resLiqPrice', '資金充足，極低強平風險  ' + modeLabel + ' MMR ' + mmrLabel, 'warning');
+  } else {
+    setResult('resLiqPrice', '$' + fmtPrice(liqPrice) + '（距 ' + fmt(liqDistPct, 2) + '%）  ' + modeLabel + ' MMR ' + mmrLabel, 'warning');
+  }
+
+  // ── TP & fee calculation ───────────────────────────────────
+  const rawTpPrice = state.tpMode === 'price'
+    ? parseFloat($('tpPrice').value)
+    : long
+      ? entry * (1 + parseFloat($('tpPct').value) / 100)
+      : entry * (1 - parseFloat($('tpPct').value) / 100);
+  const feeRate = parseFloat($('feeRate').value) || 0;
+
+  const tpValid = !isNaN(rawTpPrice) && (long ? rawTpPrice > entry : rawTpPrice < entry);
+  if (tpValid) {
+    const tpDist      = long ? rawTpPrice - entry : entry - rawTpPrice;
+    const tpDistPct   = tpDist / entry * 100;
+    const rrRatio     = tpDist / slDist;
+    const grossProfit = coins * tpDist;
+    const openFee     = posValue * (feeRate / 100);
+    const closeFee    = (coins * rawTpPrice) * (feeRate / 100);
+    const totalFee    = openFee + closeFee;
+    const netProfit   = grossProfit - totalFee;
+
+    setResult('resTpPrice',     '$' + fmtPrice(rawTpPrice), 'neutral');
+    setResult('resTpDist',      '$' + fmtPrice(tpDist) + '（' + fmt(tpDistPct, 2) + '%）', 'neutral');
+    setResult('resRR',          '1 : ' + fmt(rrRatio, 2), 'neutral');
+    setResult('resGrossProfit', '$' + fmt(grossProfit, 2));
+    setResult('resTotalFee',    '$' + fmt(totalFee, 2), 'neutral');
+    setResult('resNetProfit',   '$' + fmt(netProfit, 2), netProfit < 0 ? 'warning' : '');
+  } else {
+    clearTpResults();
+  }
+}
+
+function clearPartial() {
+  ['resSlPrice','resSlDist','resRiskAmount','resCoins','resPositionValue','resMargin','resLiqPrice'].forEach(id => {
+    const el = $(id);
+    el.textContent = '—';
+    el.className = 'result-value' + (id === 'resSlPrice' || id === 'resSlDist' ? ' neutral' : id === 'resLiqPrice' ? ' warning' : '');
+  });
+  clearTpResults();
+}
+
+// ── Init ───────────────────────────────────────────────────────
+async function init() {
+  elAssetSearch.placeholder = '商品清單載入中…';
+  await loadInstruments();
+  elAssetSearch.placeholder = '搜尋商品（如 BTCUSDT.P）…';
+  const btc = state.instruments.find(i => i.instId === 'BTC-USDT-SWAP') || state.instruments[0];
+  if (btc) selectInstrument(btc);
+}
+
+init();
+</script>
+</body>
+</html>
