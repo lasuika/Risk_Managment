@@ -700,11 +700,19 @@ document.querySelectorAll('.order-tab').forEach(tab => {
     document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     $('limitPriceGroup').style.display = mode === 'limit' ? '' : 'none';
+    if (state.slMode === 'price') syncPctFromPrice();
+    else syncPriceFromPct();
+    if (state.tpMode === 'pct') syncTpPriceFromPct();
     calculate();
   });
 });
 
-$('limitPrice').addEventListener('input', () => { syncPctFromPrice(); calculate(); });
+$('limitPrice').addEventListener('input', () => {
+  if (state.slMode === 'price') syncPctFromPrice();
+  else syncPriceFromPct();
+  if (state.tpMode === 'pct') syncTpPriceFromPct();
+  calculate();
+});
 
 // ── SL mode tabs ───────────────────────────────────────────────
 document.querySelectorAll('.sl-tab').forEach(tab => {
@@ -777,11 +785,11 @@ document.querySelectorAll('.tp-tab').forEach(tab => {
     if (mode === 'price') {
       $('tpPriceGroup').style.display = '';
       $('tpPctGroup').style.display   = 'none';
-      syncTpPctFromPrice();
+      syncTpPriceFromPct();
     } else {
       $('tpPriceGroup').style.display = 'none';
       $('tpPctGroup').style.display   = '';
-      syncTpPriceFromPct();
+      syncTpPctFromPrice();
     }
     calculate();
   });
