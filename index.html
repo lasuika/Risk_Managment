@@ -679,6 +679,15 @@ elAssetSearch.addEventListener('keydown', e => {
   if (e.key === 'Escape') { elAssetDropdown.classList.remove('open'); elAssetSearch.blur(); }
 });
 
+// ── Direction helpers ──────────────────────────────────────────
+function applyDirection(dir) {
+  if (state.direction === dir) return;
+  state.direction = dir;
+  document.querySelectorAll('.dir-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.dir === dir);
+  });
+}
+
 // ── Direction toggle ───────────────────────────────────────────
 document.querySelectorAll('.dir-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -753,7 +762,13 @@ function syncPctFromPrice() {
   }
 }
 
-$('slPrice').addEventListener('input', () => { if (state.slMode === 'price') syncPctFromPrice(); calculate(); });
+$('slPrice').addEventListener('input', () => {
+  const slp = parseFloat($('slPrice').value);
+  const p   = getEntryPrice();
+  if (!isNaN(slp) && p && slp !== p) applyDirection(slp < p ? 'long' : 'short');
+  if (state.slMode === 'price') syncPctFromPrice();
+  calculate();
+});
 $('slPct').addEventListener('input',   () => { if (state.slMode === 'pct')   syncPriceFromPct(); calculate(); });
 
 // ── TP sync ────────────────────────────────────────────────────
@@ -795,7 +810,16 @@ document.querySelectorAll('.tp-tab').forEach(tab => {
   });
 });
 
-$('tpPrice').addEventListener('input', () => { if (state.tpMode === 'price') syncTpPctFromPrice(); calculate(); });
+$('tpPrice').addEventListener('input', () => {
+  if (state.tpMode === 'price') {
+    const tp      = parseFloat($('tpPrice').value);
+    const p       = getEntryPrice();
+    const slEmpty = $('slPrice').value === '' && $('slPct').value === '';
+    if (!isNaN(tp) && p && tp !== p && slEmpty) applyDirection(tp > p ? 'long' : 'short');
+    syncTpPctFromPrice();
+  }
+  calculate();
+});
 $('tpPct').addEventListener('input',   () => { if (state.tpMode === 'pct')   syncTpPriceFromPct(); calculate(); });
 $('feeRate').addEventListener('input', calculate);
 $('mmrRate').addEventListener('input', calculate);
