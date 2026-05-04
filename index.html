@@ -196,16 +196,15 @@
     /* ── Result divider ─────────────────────────────────────── */
     .result-divider { height: 1px; background: var(--border); margin: 4px 0; }
 
-    /* ── Direction toggle ───────────────────────────────────── */
-    .dir-toggle { display: flex; width: 100%; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 14px; }
-    .dir-btn {
-      flex: 1; padding: 9px 0; background: var(--bg2);
-      border: none; cursor: pointer; font-family: inherit;
-      font-size: 13px; font-weight: 600; color: var(--text2);
-      letter-spacing: 0.5px; transition: all 0.15s;
+    /* ── Direction indicator ────────────────────────────────── */
+    .dir-indicator {
+      width: 100%; border-radius: 6px; margin-bottom: 14px;
+      padding: 9px 0; text-align: center;
+      font-size: 13px; font-weight: 600; letter-spacing: 0.5px;
+      transition: background 0.2s, color 0.2s;
     }
-    .dir-btn[data-dir="long"].active  { background: var(--green); color: #000; }
-    .dir-btn[data-dir="short"].active { background: var(--red);   color: #fff; }
+    .dir-indicator[data-dir="long"]  { background: var(--green); color: #000; }
+    .dir-indicator[data-dir="short"] { background: var(--red);   color: #fff; }
 
     /* ── Results ────────────────────────────────────────────── */
     .results-grid {
@@ -306,10 +305,7 @@
 
     <div class="section-title">交易參數</div>
 
-    <div class="dir-toggle">
-      <button class="dir-btn active" data-dir="long">▲ 做多 LONG</button>
-      <button class="dir-btn" data-dir="short">▼ 做空 SHORT</button>
-    </div>
+    <div class="dir-indicator" id="dirIndicator" data-dir="long">▲ 做多 LONG</div>
 
     <div class="input-group">
       <label>入場方式</label>
@@ -683,23 +679,10 @@ elAssetSearch.addEventListener('keydown', e => {
 function applyDirection(dir) {
   if (state.direction === dir) return;
   state.direction = dir;
-  document.querySelectorAll('.dir-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.dir === dir);
-  });
+  const el = $('dirIndicator');
+  el.dataset.dir  = dir;
+  el.textContent  = dir === 'long' ? '▲ 做多 LONG' : '▼ 做空 SHORT';
 }
-
-// ── Direction toggle ───────────────────────────────────────────
-document.querySelectorAll('.dir-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.direction = btn.dataset.dir;
-    document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    // Clear SL/TP fields to avoid stale values from the other direction
-    $('slPrice').value = ''; $('slPct').value = '';
-    $('tpPrice').value = ''; $('tpPct').value = '';
-    calculate();
-  });
-});
 
 // ── Order type tabs ────────────────────────────────────────────
 document.querySelectorAll('.order-tab').forEach(tab => {
